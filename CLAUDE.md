@@ -209,13 +209,16 @@ file, as the original note asked. 4 stays deferred.
    by USB Audio Class rather than by vendor/product id, so a second device would
    be *recognised*; the service simply takes the first one it finds.
 
-5. **Repo/packaging shape — PARTLY RESOLVED.** AOAS is its own app project with
-   its own Gradle build (`app/`, `native/`, `aidl/`). It links `audio_engine`'s
-   `ae_usb` target, which is set by `AOAS_AUDIO_ENGINE_DIR` in
+5. **Repo/packaging shape — RESOLVED (2026-08-28).** AOAS is its own app project
+   with its own Gradle build (`app/`, `native/`, `aidl/`). It links
+   `audio_engine`'s `ae_usb` target, which is set by `AOAS_AUDIO_ENGINE_DIR` in
    `native/CMakeLists.txt` and currently points at `firstparty/audio_engine`.
-   Still to decide: whether that becomes a git submodule under `framework/`
-   (matching `app_shell`/`vk_canvas`) and whether AOAS gets its own repo under
-   `minervarr`. Record the decision here once made.
+   Decision recorded: AOAS lives in its own repo
+   (`github.com/minervarr/Android_Audio_Server-AAS-`), and the three first-party
+   checkouts are registered git submodules under `firstparty/` —
+   `audio_engine`, `Vk_Canvas_Lb_LAW`, `App_shell` — matching the sibling
+   apps' `framework/` convention (paths differ; the shape is the same).
+   Commits and pushes go through `git_wrapper` like everywhere else.
 
 ---
 
