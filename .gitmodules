@@ -1,0 +1,9 @@
+[submodule "firstparty/audio_engine"]
+	path = firstparty/audio_engine
+	url = https://github.com/minervarr/audio_engine
+[submodule "firstparty/Vk_Canvas_Lb_LAW"]
+	path = firstparty/Vk_Canvas_Lb_LAW
+	url = https://github.com/minervarr/Vk_Canvas_Lb_LAW
+[submodule "firstparty/App_shell"]
+	path = firstparty/App_shell
+	url = https://github.com/minervarr/App_shell

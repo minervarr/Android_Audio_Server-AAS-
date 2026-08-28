@@ -1,0 +1,5 @@
+// Root project: nothing is built here. AOAS is a single module (:app); this
+// file exists only to pin the Android Gradle Plugin version in one place.
+plugins {
+    id 'com.android.application' version '9.2.0' apply false
+}

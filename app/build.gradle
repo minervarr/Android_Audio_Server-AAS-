@@ -1,0 +1,85 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'io.nava.aoas'
+    compileSdk 36
+    // Pin the NDK explicitly, matching audio_engine: AGP's per-version default
+    // will not be the same one, and this build compiles that engine's sources.
+    ndkVersion '29.0.14206865'
+
+    defaultConfig {
+        applicationId 'io.nava.aoas'
+        // 26 is audio_engine's floor and therefore ours. Everything AOAS needs
+        // exists there: ASharedMemory_create (26) for the ring, and the AIDL
+        // Java backend, which has no floor of its own.
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName '0.1.0'
+
+        // arm64-v8a is every modern phone, x86_64 is the emulator,
+        // armeabi-v7a keeps 32-bit devices alive (audio_engine's 32-bit
+        // decoder quirks are fixed in its CMake).
+        ndk {
+            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86_64'
+        }
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=c++_static'
+                cppFlags '-std=c++17'
+            }
+        }
+    }
+
+    buildFeatures {
+        aidl true
+    }
+
+    sourceSets {
+        // The .aidl files live at the repo root rather than inside app/src, and
+        // that is on purpose: they are the public contract every client app has
+        // to compile against, so they should be somewhere a client can point at
+        // without reaching into this app's source tree.
+        main.aidl.srcDirs += '../aidl'
+
+        // app_shell's Java half is compiled HERE -- the library's own CMake
+        // does not build it, because Java is Gradle's job. It is ONE file,
+        // AppShellActivity: a NativeActivity subclass that supplies the few
+        // things a purely native Android app cannot do for itself (the IME,
+        // the clipboard). Without this line every JNI lookup fails quietly and
+        // those services become no-ops.
+        //
+        // It is framework code, not AOAS's. This app owns no Java UI at all.
+        main.java.srcDirs += '../firstparty/App_shell/platform/android/java'
+
+        // The shaders and the font vk_canvas loads at runtime. Packaged from
+        // the repo's own assets/ rather than copied into this module by CMake:
+        // AGP merges assets BEFORE the native build runs, so a POST_BUILD copy
+        // would always be one build too late.
+        main.assets.srcDirs += '../build/desktop/assets'
+    }
+
+    externalNativeBuild {
+        cmake {
+            path file('../native/CMakeLists.txt')
+            version '3.22.1'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false   // there is barely any Java to shrink
+        }
+    }
+}
+
+dependencies {
+    /* none -- pure Android SDK, exactly like audio_engine */
+}

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Which devices AOAS offers to take charge of.
+
+  Matched by USB class rather than by vendor/product id: class 1 is USB Audio
+  Class, so this covers the Clarett and every other UAC interface without a
+  table of hardware that would need editing for each new box. Subclass 1 is the
+  AudioControl interface, which every UAC device exposes exactly once; matching
+  on it means one entry per device, not one per streaming interface.
+
+  Multiple simultaneous DACs are deliberately out of scope for now (CLAUDE.md
+  open question 4); the service takes the first audio device it finds.
+-->
+<resources>
+    <usb-device class="1" subclass="1" />
+</resources>

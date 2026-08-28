@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Without USB host support there is no DAC to talk to and nothing for
+         this app to do, so it is required rather than optional. -->
+    <uses-feature android:name="android.hardware.usb.host" android:required="true" />
+
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- API 34 requires the permission matching the service type below. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Signature level: only apps signed with the same key may bind. This is a
+         standing commitment across every present and future AOAS client, and it
+         is made deliberately (docs/design.md section 4). The alternative is a
+         binding surface any installed app could reach, with a live audio device
+         behind it. -->
+    <permission
+        android:name="io.nava.aoas.BIND_AOAS"
+        android:protectionLevel="signature"
+        android:label="@string/permission_label"
+        android:description="@string/permission_description" />
+
+    <!-- AOAS binds to its own service from the debug UI, and a signature-level
+         permission is not implicitly held by the app that declares it. -->
+    <uses-permission android:name="io.nava.aoas.BIND_AOAS" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@android:drawable/stat_sys_data_bluetooth"
+        android:allowBackup="false">
+
+        <!-- The bring-up console. Not part of the product: AOAS's real user
+             interface is its notification. This screen exists to answer the
+             questions that can only be answered on real hardware, which is
+             where every remaining risk in this project lives.
+
+             It is a NativeActivity. There is no Java Activity and no layout
+             XML in this app: the console is C++ drawn with vk_canvas, hosted
+             by app_shell (see native/ui/). AppShellActivity is app_shell's own
+             one Java file, supplying the IME and clipboard hooks a purely
+             native app cannot reach; android.app.lib_name points it at the
+             library whose android_main() is the real entry point. -->
+        <activity
+            android:name="io.nava.appshell.AppShellActivity"
+            android:exported="true"
+            android:label="@string/debug_title"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|density"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="aoas" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".AoasService"
+            android:exported="true"
+            android:permission="io.nava.aoas.BIND_AOAS"
+            android:foregroundServiceType="connectedDevice">
+
+            <intent-filter>
+                <action android:name="io.nava.aoas.IAoas" />
+            </intent-filter>
+
+            <!-- Declaring the ATTACHED filter is what lets Android grant the USB
+                 permission on plug-in without showing the dialog at all, and it
+                 also starts us when the DAC appears while we are not running. -->
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter" />
+        </service>
+    </application>
+</manifest>

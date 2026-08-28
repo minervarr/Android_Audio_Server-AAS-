@@ -1,0 +1,15 @@
+# Gradle
+.gradle/
+build/
+
+# NDK / CMake
+.cxx/
+.externalNativeBuild/
+
+# Android Studio / IDE
+.idea/
+*.iml
+local.properties
+
+# Local notes (git_wrapper-era scratch, never part of the project)
+.remember/
