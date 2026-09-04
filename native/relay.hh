@@ -47,6 +47,22 @@ public:
     // Stop and join. Safe to call when not running.
     void stop();
 
+    // Throw away everything buffered between the client and the DAC -- what is
+    // still in the shared ring, what this thread has pulled out but not handed
+    // over, and the seconds already sitting in the driver's own ring -- without
+    // stopping the relay and without touching the isochronous stream.
+    //
+    // The work happens ON the relay thread, not the caller's. That is the whole
+    // design: the ring and the driver are otherwise touched by exactly one
+    // thread, and a flush that reached in from Binder would be the first thing
+    // to break that. The caller blocks until the loop has honoured the request,
+    // because "discarded" has to be true before the client writes its next
+    // track -- see IAoas.flush(), which is synchronous for the same reason.
+    //
+    // Returns false if the relay is not running, or if the request was not
+    // honoured within `timeoutMs`.
+    bool flush(int timeoutMs = 50);
+
     bool running() const { return running_.load(std::memory_order_acquire); }
 
 private:
@@ -54,6 +70,8 @@ private:
 
     std::thread thread_;
     std::atomic<bool> running_{false};
+    // Set by flush(), cleared by the relay thread once the discard is done.
+    std::atomic<bool> flushRequest_{false};
     UsbDevice* device_ = nullptr;
     ShmRing ring_;
     int frameBytes_ = 4;

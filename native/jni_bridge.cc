@@ -148,6 +148,13 @@ Java_io_nava_aoas_AoasNative_nativeRelease(JNIEnv*, jclass, jlong h, jint uid) {
     return (s && s->release(static_cast<uid_t>(uid))) ? JNI_TRUE : JNI_FALSE;
 }
 
+// Discard what is buffered, keep the device. See IAoas.flush().
+JNIEXPORT jboolean JNICALL
+Java_io_nava_aoas_AoasNative_nativeFlush(JNIEnv*, jclass, jlong h, jint uid) {
+    auto* s = serverOf(h);
+    return (s && s->flush(static_cast<uid_t>(uid))) ? JNI_TRUE : JNI_FALSE;
+}
+
 // The owner's process died -- Java's death recipient fired.
 JNIEXPORT void JNICALL
 Java_io_nava_aoas_AoasNative_nativeOwnerDied(JNIEnv*, jclass, jlong h) {

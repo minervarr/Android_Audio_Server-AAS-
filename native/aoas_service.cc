@@ -122,6 +122,25 @@ bool AoasServer::release(uid_t callerUid) {
     return true;
 }
 
+bool AoasServer::flush(uid_t callerUid) {
+    std::lock_guard<std::mutex> lock(mu_);
+    if (ownerUid_ == kNoOwner) return true;      // nothing buffered; idempotent
+    if (callerUid != ownerUid_) {
+        LOGE("uid %d tried to flush a device owned by uid %d", callerUid, ownerUid_);
+        return false;
+    }
+    // Handed to the relay rather than done here: the ring and the driver are
+    // touched by exactly one thread, and reaching in from this Binder thread is
+    // what would break that. relay_.flush() blocks until that thread has
+    // honoured it, so this call returning means the audio is really gone --
+    // which is what lets the client start writing the next track immediately.
+    //
+    // mu_ is held across it deliberately. It is bounded at 50 ms and it must
+    // not interleave with a release() or an onUsbDetached() stopping the relay
+    // underneath the flush.
+    return relay_.flush();
+}
+
 void AoasServer::onOwnerDied() {
     std::lock_guard<std::mutex> lock(mu_);
     if (ownerUid_ == kNoOwner) return;

@@ -119,6 +119,18 @@ public:
     // driver. These bytes reach the USB endpoint unmodified.
     int write(const uint8_t* data, int length);
 
+    // Throw away the audio already handed to the driver but not yet sent. The
+    // ring here is `playbackRingMs` (3000) deep, so without this a client that
+    // stops or skips is still heard for up to three seconds -- releasing the
+    // shared ring never touched this buffer at all.
+    //
+    // Deliberately NOT a stop or a reconfigure: the isochronous stream stays
+    // open and the driver pads it with silence, so the DAC's clock does not
+    // re-lock. That is what separates a flush from a handover.
+    //
+    // Called only from the relay thread (see Relay::flush).
+    void flush();
+
     // Real (non-silence) audio still buffered between here and the DAC. Lets an
     // owner drain its tail before releasing instead of cutting it off.
     int pendingPlaybackMs() const;

@@ -141,6 +141,18 @@ int UsbDevice::write(const uint8_t* data, int length) {
     return driver_->write(data, length);
 }
 
+void UsbDevice::flush() {
+    // No lock, for exactly the reason write() states: this runs on the relay
+    // thread, between two of its own writes, and driver_ is only reset in
+    // detach(), which stops the relay first.
+    if (!driver_) return;
+    // Clears the driver's playback ring and resets its drain accounting. It
+    // does NOT stop or reconfigure the stream -- the endpoint keeps running on
+    // padded silence, so the DAC's clock survives, which is the one thing this
+    // whole project exists to protect.
+    driver_->flush();
+}
+
 int UsbDevice::pendingPlaybackMs() const {
     std::lock_guard<std::mutex> lock(mu_);
     return driver_ ? driver_->getPendingPlaybackMs() : 0;

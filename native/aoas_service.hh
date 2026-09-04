@@ -98,6 +98,21 @@ public:
     // different name.
     bool release(uid_t callerUid);
 
+    // Discard everything buffered between the owner and the DAC, keeping both
+    // the ownership and the isochronous stream. False if the caller is not the
+    // owner -- flushing another client's audio is a forced interruption, the
+    // same thing release() refuses for the same reason.
+    //
+    // This exists because a client had no way to say "stop NOW". The only
+    // lever was release() followed by acquire(), which costs four Binder round
+    // trips, a fresh shared-memory region and a format renegotiation -- and
+    // still left the driver's own three-second ring playing, because
+    // endOwnershipLocked() never touched it. Stop and Next were late by that
+    // buffer, every time.
+    //
+    // Cheap by construction: no reconfiguration, so no clock re-lock.
+    bool flush(uid_t callerUid);
+
     // The owner's process died. Frees the device with no callback -- there is
     // nobody left to hear it.
     void onOwnerDied();

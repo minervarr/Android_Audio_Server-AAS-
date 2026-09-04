@@ -15,6 +15,7 @@
 
 #include <sys/mman.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cassert>
 #include <cstdio>
@@ -173,12 +174,64 @@ void testFullVersusEmpty() {
     munmap(base, region);
 }
 
+// --- 4. discardPending() throws away the past, never the future -------------
+//
+// This is the flush() primitive, and the property that matters is what it does
+// NOT touch. clear() rewrites both indices, which is a race against a live
+// producer -- writePos belongs to the client. discardPending() moves only
+// readPos, so a producer that keeps writing across the call keeps its bytes:
+// those belong to the track the client is starting, not the one it abandoned.
+void testDiscardPending() {
+    constexpr size_t kCapacity = 256;
+    const size_t region = aoas::shmRingRegionBytes(kCapacity);
+    void* base = mapShared(region);
+    aoas::ShmRing ring = aoas::ShmRing::create(base, region, 4);
+
+    std::vector<uint8_t> stale(64, 0xAA);
+    check(ring.write(stale.data(), stale.size()) == 64, "the stale track is buffered");
+    check(ring.available() == 64, "...and is visible to the consumer");
+
+    ring.discardPending();
+    check(ring.available() == 0, "discardPending() drops what was buffered");
+
+    // The producer writes the NEXT track immediately, exactly as the client
+    // does after a flush returns. Nothing here may be lost.
+    std::vector<uint8_t> fresh(32, 0x5B);
+    check(ring.write(fresh.data(), fresh.size()) == 32, "the ring still accepts writes");
+    check(ring.available() == 32, "post-flush audio survives");
+
+    std::vector<uint8_t> out(32, 0);
+    check(ring.read(out.data(), out.size()) == 32, "and reads back");
+    check(std::equal(out.begin(), out.end(), fresh.begin()),
+          "what comes back is the NEW track, byte for byte -- no stale tail");
+
+    // Idempotent, and harmless on an empty ring: Stop after Stop must not
+    // corrupt the indices.
+    ring.discardPending();
+    ring.discardPending();
+    check(ring.available() == 0, "discarding an empty ring is a no-op");
+    check(ring.freeSpace() == kCapacity - 1, "...and does not lose capacity");
+
+    // It must also survive a wrap, since readPos jumping to writePos is the
+    // one case where the two indices are equal but far from zero.
+    std::vector<uint8_t> filler(200, 0x11);
+    for (int i = 0; i < 3; ++i) {
+        ring.write(filler.data(), filler.size());
+        ring.discardPending();
+    }
+    check(ring.available() == 0, "discard still empties the ring after wrapping");
+    check(ring.write(fresh.data(), fresh.size()) == 32, "and the ring still works");
+
+    munmap(base, region);
+}
+
 }  // namespace
 
 int main() {
     testRoundTrip();
     testUntrustedPeer();
     testFullVersusEmpty();
+    testDiscardPending();
     if (failures == 0) std::puts("shm_ring_test: all checks passed");
     return failures == 0 ? 0 : 1;
 }

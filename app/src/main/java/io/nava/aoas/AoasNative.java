@@ -55,6 +55,16 @@ final class AoasNative {
                                     int channels, int bitDepth, int ringMillis);
 
     static native boolean nativeRelease(long handle, int uid);
+
+    /**
+     * Discard everything buffered between the owner and the DAC, keeping
+     * ownership and the isochronous stream. Blocks until the relay thread has
+     * actually done it -- see IAoas.flush() for why that has to be true before
+     * returning.
+     *
+     * @return false when the caller is not the owner.
+     */
+    static native boolean nativeFlush(long handle, int uid);
     static native void nativeOwnerDied(long handle);
     static native void nativeForceDisconnect(long handle);
     static native int nativeOwnerUid(long handle);

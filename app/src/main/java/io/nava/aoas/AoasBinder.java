@@ -122,6 +122,19 @@ final class AoasBinder extends IAoas.Stub implements AoasNative.OwnershipLostLis
         clearClient();
     }
 
+    /**
+     * Unlike release(), the client stays the owner and keeps its ring, so there
+     * is deliberately no clearClient() here: the death recipient must go on
+     * watching a client that is still holding the DAC.
+     */
+    @Override
+    public void flush() {
+        final int uid = Binder.getCallingUid();
+        if (!AoasNative.nativeFlush(handle, uid)) {
+            throw new SecurityException("uid " + uid + " does not own the device");
+        }
+    }
+
     @Override
     public int[] activeFormat() {
         return AoasNative.nativeActiveFormat(handle);

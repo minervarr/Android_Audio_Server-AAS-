@@ -5,9 +5,12 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <chrono>
+
 #include "usb_device.hh"
 
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  "AOAS", __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "AOAS", __VA_ARGS__)
 
 namespace aoas {
 namespace {
@@ -47,8 +50,32 @@ void Relay::start(UsbDevice* device, ShmRing ring, int frameBytes) {
     if (chunk == 0) chunk = static_cast<size_t>(frameBytes);
     scratch_.assign(chunk, 0);
 
+    // A request left over from a previous owner must not fire against this one.
+    flushRequest_.store(false, std::memory_order_release);
     running_.store(true, std::memory_order_release);
     thread_ = std::thread(&Relay::run, this);
+}
+
+bool Relay::flush(int timeoutMs) {
+    if (!running_.load(std::memory_order_acquire)) return false;
+
+    flushRequest_.store(true, std::memory_order_release);
+
+    // The loop naps 0.5 ms when idle and its drains are a few milliseconds of
+    // audio, so this returns in well under a millisecond in practice. The
+    // timeout is a bound on being wrong -- a relay that stopped underneath us,
+    // most likely -- not an expected wait.
+    const auto deadline =
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    while (flushRequest_.load(std::memory_order_acquire)) {
+        if (!running_.load(std::memory_order_acquire)) return false;
+        if (std::chrono::steady_clock::now() > deadline) {
+            LOGE("relay: flush not honoured within %d ms", timeoutMs);
+            return false;
+        }
+        napBriefly();
+    }
+    return true;
 }
 
 void Relay::stop() {
@@ -79,6 +106,27 @@ void Relay::run() {
     size_t pendingOffset = 0;
 
     while (running_.load(std::memory_order_acquire)) {
+        // Honoured here, at the top of the loop, so the discard cannot land in
+        // the middle of a drain: `pending` below holds bytes already taken out
+        // of shared memory, and throwing away the ring while still holding
+        // those would play the abandoned track's tail after the flush.
+        //
+        // All three buffers go, in the order the audio flows through them:
+        // this thread's scratch, the client's ring, then the driver's own --
+        // which is the deep one (playbackRingMs = 3000) and the whole reason
+        // Stop used to be audibly late. The isochronous stream itself is not
+        // touched; the driver keeps padding it with silence, so the DAC's
+        // clock never re-locks.
+        if (flushRequest_.load(std::memory_order_acquire)) {
+            pending       = 0;
+            pendingOffset = 0;
+            ring_.discardPending();
+            device_->flush();
+            flushRequest_.store(false, std::memory_order_release);
+            LOGI("relay: flushed");
+            continue;
+        }
+
         if (pending == 0) {
             pending = ring_.read(scratch_.data(), scratch_.size());
             pendingOffset = 0;
