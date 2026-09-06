@@ -33,6 +33,6 @@ function(aoas_stage_font TARGET OUT_DIR)
     add_custom_command(TARGET ${TARGET} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${OUT_DIR}/fonts
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${AOAS_ROOT}/assets/fonts/ui.otf ${OUT_DIR}/fonts/ui.otf
+                ${AOAS_ROOT}/assets/fonts/ui/ui.otf ${OUT_DIR}/fonts/ui.otf
         COMMENT "Staging font into ${OUT_DIR}")
 endfunction()

@@ -32,7 +32,7 @@ add_subdirectory(${FIRSTPARTY_DIR}/App_shell     ${CMAKE_BINARY_DIR}/app_shell)
 # The legibility floor is derived from the faces the APP ships — list exactly
 # the one it loads, or the console can render below its own floor.
 include(AppShellMinTextSize)
-app_shell_generate_min_text_size(${AOAS_ROOT}/assets/fonts/ui.otf)
+app_shell_generate_min_text_size(${AOAS_ROOT}/assets/fonts/ui/ui.otf)
 add_dependencies(app_shell generate_ui_min_text_size)
 
 add_executable(aoas_console
