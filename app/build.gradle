@@ -73,9 +73,22 @@ android {
         targetCompatibility JavaVersion.VERSION_11
     }
 
+    signingConfigs {
+        // Shared with Matrix_Player (same bruno.jks, same alias/password) so
+        // AOAS updates can be installed over Matrix_Player's release builds
+        // and vice versa — the two apps must present the same signing cert.
+        release {
+            storeFile file("../bruno.jks")
+            storePassword "Tetas//2004//"
+            keyAlias "brunoKey"
+            keyPassword "Tetas//2004//"
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false   // there is barely any Java to shrink
+            signingConfig signingConfigs.release
         }
     }
 }

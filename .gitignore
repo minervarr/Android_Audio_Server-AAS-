@@ -13,3 +13,7 @@ local.properties
 
 # Local notes (git_wrapper-era scratch, never part of the project)
 .remember/
+
+# Signing key. The shared bruno.jks already lives in Matrix_Player; do not
+# commit another copy here.
+*.jks

@@ -12,7 +12,7 @@
 #   ./build.sh logs            follow AOAS's logcat (native tag included)
 #   ./build.sh test            run the desktop shm_ring test (ASan + UBSan)
 #   ./build.sh clean           delete build outputs
-#   ./build.sh release         build the release APK (unsigned)
+#   ./build.sh release         build the release APK (signed with bruno.jks)
 #
 # Everything after the subcommand is passed straight to Gradle, so
 # `./build.sh install --info` works.
@@ -26,6 +26,7 @@ GRADLE="${GRADLE:-gradle}"
 ADB="${ADB:-adb}"
 PKG=io.nava.aoas
 APK="$ROOT/app/build/outputs/apk/debug/app-debug.apk"
+APK_RELEASE="$ROOT/app/build/outputs/apk/release/app-release.apk"
 
 # The SDK carries the NDK and CMake this build pins; without it Gradle guesses.
 export ANDROID_HOME="${ANDROID_HOME:-/opt/android-sdk}"
@@ -48,8 +49,9 @@ cmd_build() {
 }
 
 cmd_release() {
-    say "assembling release APK (unsigned)"
+    say "assembling release APK (signed with bruno.jks)"
     "$GRADLE" :app:assembleRelease "$@"
+    say "APK: $APK_RELEASE"
 }
 
 cmd_install() {
